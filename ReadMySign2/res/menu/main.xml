@@ -1,0 +1,26 @@
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    tools:context="id.prosdev.readmysign.MainActivity" >
+    
+    <item
+		android:id="@+id/AddBtn"
+		android:orderInCategory="100"
+		android:showAsAction="ifRoom|withText"
+		android:onClick="addNewGesture"
+	    android:title="@string/AddGesture" />
+    
+    <item
+	    android:id="@+id/TrainBtn"
+		android:orderInCategory="100"
+		android:showAsAction="ifRoom|withText"
+		android:onClick="train"
+		android:title="@string/train" />
+    
+	<item
+		android:id="@+id/TestBtn"
+		android:orderInCategory="100"
+		android:showAsAction="ifRoom|withText"
+		android:onClick="test"
+	    android:title="@string/test" />
+    
+</menu>
