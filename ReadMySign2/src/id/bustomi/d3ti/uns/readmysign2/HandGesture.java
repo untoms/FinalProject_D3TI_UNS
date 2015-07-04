@@ -29,8 +29,7 @@ public class HandGesture {
 	public Rect boundingRect;
 	public MatOfInt4 defects = new MatOfInt4();
 	
-	public ArrayList<Integer> defectIdAfter = new ArrayList<Integer>();
-	
+	public ArrayList<Integer> defectIdAfter = new ArrayList<Integer>();	
 	
 	public List<Point> fingerTips = new ArrayList<Point>();
 	public List<Point> fingerTipsOrder = new ArrayList<Point>();
@@ -64,13 +63,11 @@ public class HandGesture {
 	private Mat mReferenceImage;
 	
 	
-	void findBiggestContour() 
-	{
+	void findBiggestContour(){
 		int idx = -1;
 		int cNum = 0;
 		
-		for (int i = 0; i < contours.size(); i++)
-		{
+		for (int i = 0; i < contours.size(); i++){
 			int curNum = contours.get(i).toList().size();
 			if (curNum > cNum) {
 				idx = i;
@@ -81,8 +78,7 @@ public class HandGesture {
 		cMaxId = idx;
 	}
 	
-	boolean detectIsHand(Mat img)
-	{
+	boolean detectIsHand(Mat img){
 		int centerX = 0;
 		int centerY = 0;
 		if (boundingRect != null) {
@@ -103,8 +99,7 @@ public class HandGesture {
 	}
 	
 	//Convert the feature indicated by label to the string used in SVM input file
-	String feature2SVMString(int label)
-	{
+	String feature2SVMString(int label){
 		String ret = Integer.toString(label) + " ";
 		int i;
 		for (i = 0; i < features.size(); i++)
@@ -117,8 +112,7 @@ public class HandGesture {
 	}
 	
 	//Extract hand features from img 
-	String featureExtraction(Mat img, int label)
-	{
+	String featureExtraction(Mat img, int label){
 		String ret = null;
 		if ((detectIsHand(img))) {			
 			
@@ -128,8 +122,7 @@ public class HandGesture {
 			Point[] contourPts = contours.get(cMaxId).toArray();
 			Point prevDefectVec = null;
 			int i;
-			for (i = 0; i < defectIdAfter.size(); i++)
-			{
+			for (i = 0; i < defectIdAfter.size(); i++){
 				int curDlistId = defectIdAfter.get(i);
 				int curId = dList.get(curDlistId);
 				
@@ -161,8 +154,7 @@ public class HandGesture {
 			if (defectIdAfter.size() > 0) {
 				boolean end = false;
 				
-				for (int j = startId; ; j++)
-				{
+				for (int j = startId; ; j++){
 					if (j == defectIdAfter.size())	{
 						
 						if (end == false) {
@@ -195,8 +187,7 @@ public class HandGesture {
 			
 			int count = 0;
 			features.clear();
-			for (int fid = 0; fid < finTipsTemp.size(); )
-			{
+			for (int fid = 0; fid < finTipsTemp.size(); ){
 				if (count > 5)
 					break;
 				
@@ -267,14 +258,11 @@ public class HandGesture {
 		return ret;
 	}
 	
-	
-	
 	public native double findInscribedCircleJNI(long imgAddr, double rectTLX, double rectTLY,
 			double rectBRX, double rectBRY, double[] incircleX, double[] incircleY, long contourAddr);
 	
 	// Find the location of inscribed circle and return the radius and the center location
-	void findInscribedCircle(Mat img)
-	{			
+	void findInscribedCircle(Mat img){			
 		Point tl = boundingRect.tl();
 		Point br = boundingRect.br();
 		

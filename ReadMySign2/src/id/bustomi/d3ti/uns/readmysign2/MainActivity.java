@@ -8,51 +8,42 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.ListIterator;
+import java.util.Locale;
 import java.util.Map;
 
 import org.opencv.android.BaseLoaderCallback;
 import org.opencv.android.CameraBridgeViewBase.CvCameraViewFrame;
 import org.opencv.android.CameraBridgeViewBase.CvCameraViewListener2;
-import org.opencv.android.JavaCameraView;
 import org.opencv.android.LoaderCallbackInterface;
 import org.opencv.android.OpenCVLoader;
 import org.opencv.core.Core;
 import org.opencv.core.Mat;
 import org.opencv.core.MatOfPoint;
-import org.opencv.core.MatOfRect;
 import org.opencv.core.Point;
 import org.opencv.core.Rect;
 import org.opencv.core.Scalar;
 import org.opencv.core.Size;
 import org.opencv.highgui.Highgui;
 import org.opencv.imgproc.Imgproc;
-import org.opencv.objdetect.CascadeClassifier;
 
 import android.app.Activity;
 import android.app.AlertDialog;
-import android.content.ActivityNotFoundException;
-import android.content.ComponentName;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.content.pm.PackageManager;
-import android.content.pm.ResolveInfo;
-import android.graphics.drawable.Drawable;
 import android.hardware.Camera;
 import android.hardware.Camera.AutoFocusCallback;
-import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
+import android.speech.tts.TextToSpeech;
 import android.support.v4.view.MotionEventCompat;
 import android.util.Log;
 import android.view.Menu;
@@ -62,11 +53,9 @@ import android.view.SubMenu;
 import android.view.SurfaceView;
 import android.view.View;
 import android.view.View.OnTouchListener;
-import android.view.WindowManager;
-import android.widget.Button;
 import android.widget.Toast;
 
-public class MainActivity extends Activity implements CvCameraViewListener2 {
+public class MainActivity extends Activity implements CvCameraViewListener2, TextToSpeech.OnInitListener {
 	
 	private static final String TAG = "ReadMySign::Activity";
 
@@ -199,6 +188,8 @@ public class MainActivity extends Activity implements CvCameraViewListener2 {
 	private int selectedLabel = -2;
 	private int curMaxLabel = 0;
 	private int selectedMappedLabel = -2;
+	private int frameTest=0;
+	private int frameJeda=0;
 	
 	//Stores string representation of features to be written to train_data.txt
 	private ArrayList<String> feaStrs = new ArrayList<String>();
@@ -207,8 +198,11 @@ public class MainActivity extends Activity implements CvCameraViewListener2 {
 	File sdFile = new File(sdCardDir, "AppMap.txt"); 
 	
 	private Menu menu;
-	
-	private String letters []={"A","B","C","D","E","F","G","H","I","K","L","M","N","O","P","Q","R","S","T","U","V","W","X","Y","I Love U"};
+	private String tampil="";
+	private String letters []={
+			"A","B","C","D","E","F","G","H","I","K","L","M","N","O","P","Q","R","S","T","U","V","W","X","Y","I Love U"};
+	private StringBuffer buffer=new StringBuffer();
+	private TextToSpeech engine;
 	
 	private BaseLoaderCallback mLoaderCallback = new BaseLoaderCallback(this) {
 		@Override
@@ -331,8 +325,7 @@ public class MainActivity extends Activity implements CvCameraViewListener2 {
 		File file[] = storeFolder.listFiles();
 	
 		int maxLabel = 0;
-		for (int i=0; i < file.length; i++)
-		{
+		for (int i=0; i < file.length; i++){
 		 
 			String fullName = file[i].getName();
 			
@@ -358,14 +351,12 @@ public class MainActivity extends Activity implements CvCameraViewListener2 {
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);
-		
+		engine = new TextToSpeech(this, this);
 		try{
 	        FileInputStream fis = new FileInputStream(sdFile);
 	        ObjectInputStream ois = new ObjectInputStream(fis);
-	        while(true)
-	        {
-	             try{
-	            
+	        while(true) {
+	             try{	            
 	                   int key = ois.readInt();
 	                   String value =(String) ois.readObject();
 
@@ -379,8 +370,7 @@ public class MainActivity extends Activity implements CvCameraViewListener2 {
 	        }  
 	        ois.close();
 	        Log.e("ReadFile","read succeeded......");
-        }catch(Exception ex)
-        {
+        }catch(Exception ex) {
         	Log.e("ReadFile","read ended......");
         	
         }
@@ -390,10 +380,8 @@ public class MainActivity extends Activity implements CvCameraViewListener2 {
 		mOpenCvCameraView.setCvCameraViewListener(this);
 		
 		samplePoints = new Point[SAMPLE_NUM][2];
-		for (int i = 0; i < SAMPLE_NUM; i++)
-		{
-			for (int j = 0; j < 2; j++)
-			{
+		for (int i = 0; i < SAMPLE_NUM; i++){
+			for (int j = 0; j < 2; j++)	{
 				samplePoints[i][j] = new Point();
 			}
 		}
@@ -430,6 +418,20 @@ public class MainActivity extends Activity implements CvCameraViewListener2 {
         
         Log.i(TAG, "Created!");
 	}
+	
+	@Override
+    public void onInit(int status) {
+        Log.d("Speech", "OnInit - Status ["+status+"]");
+
+        if (status == TextToSpeech.SUCCESS) {
+            Log.d("Speech", "Success!");
+            engine.setLanguage(Locale.UK);
+        }
+    }
+	
+	private void speech() {
+        engine.speak(buffer.toString(), TextToSpeech.QUEUE_FLUSH, null);
+    }
 
 	public void initOpenCV() {
 		
@@ -562,6 +564,46 @@ public class MainActivity extends Activity implements CvCameraViewListener2 {
 	    menu.findItem(R.id.TestBtn).setVisible(true);	   	
     	
 	}
+	
+	public void showDialogFirstRun(String title,String message){
+		Log.i("Show Dialog", "Entered");
+        AlertDialog.Builder alertDialogBuilder = new AlertDialog.Builder(  
+                  this);  
+             // set title  
+             alertDialogBuilder.setTitle(title);  
+             // set dialog message  
+             alertDialogBuilder  
+                  .setMessage(message)  
+                  .setCancelable(false)  
+                  .setPositiveButton("Yes",new DialogInterface.OnClickListener() {  
+                       public void onClick(DialogInterface dialog,int id) {  
+                           //cari opencv manager
+                            
+                            synchronized(sync) {
+                            	sync.notify();
+                            }
+                            
+                            dialog.cancel();  
+                            
+                       }  
+                   })  
+                  .setNegativeButton("No",new DialogInterface.OnClickListener() {  
+                       public void onClick(DialogInterface dialog,int id) {  
+                            // if this button is clicked, just close  
+                            // the dialog box and do nothing 
+                    	   
+                    	   synchronized(sync) {
+                               sync.notify();
+                               }
+                    	   
+                            dialog.cancel(); 
+                       }  
+                  });  
+                  // create alert dialog  
+                  AlertDialog alertDialog = alertDialogBuilder.create();  
+                  // show it  
+                  alertDialog.show();  
+   }
 	
 	public void showDialogBeforeAdd(String title,String message){
 		Log.i("Show Dialog", "Entered");
@@ -785,6 +827,7 @@ public class MainActivity extends Activity implements CvCameraViewListener2 {
  	
  	//Called when user clicks "Test" button
  	public void test(MenuItem view) {
+ 		hg.features.clear();
  		
  		if (mode == TRAIN_REC_MODE)
  			mode = TEST_MODE;
@@ -1032,7 +1075,7 @@ public class MainActivity extends Activity implements CvCameraViewListener2 {
 	public Mat onCameraFrame(CvCameraViewFrame inputFrame) {
 		rgbaMat = inputFrame.rgba();
 				
-		Core.flip(rgbaMat, rgbaMat, 1);
+//		Core.flip(rgbaMat, rgbaMat, 1);
 				
 		Imgproc.GaussianBlur(rgbaMat, rgbaMat, new Size(5,5), 5, 5);
 		
@@ -1075,7 +1118,7 @@ public class MainActivity extends Activity implements CvCameraViewListener2 {
 				            @Override
 				            public void run() {                
 				                {                    
-				                	showDialogBeforeAdd("Add or not", "Add this new gesture labeled as "
+				                	showDialogBeforeAdd("Tambahkan atau Tidak", "Tambahkan gesture baru ini dengan label sebagai "
 											+ curLabel + "?");
 				                }
 				            }
@@ -1083,8 +1126,7 @@ public class MainActivity extends Activity implements CvCameraViewListener2 {
 				        
 					mHandler.post(runnableShowBeforeAdd);			
 										
-					try {
-						
+					try {						
 						synchronized(sync) {
 							sync.wait();
 						}												
@@ -1096,7 +1138,13 @@ public class MainActivity extends Activity implements CvCameraViewListener2 {
 					mode = TRAIN_REC_MODE;
 				}
 			} else if ((mode == TEST_MODE)||(mode == APP_TEST_MODE)) {
-				Double[] doubleValue = hg.features.toArray(new Double[hg.features.size()]);
+				
+				if (hg.features == null) {
+					return rgbaMat;
+				}
+				
+				Double[] doubleValue = hg.features.toArray(new Double[hg.features.size()]);									
+								
 				values[0] = new float[doubleValue.length];
 				indices[0] = new int[doubleValue.length];
 				
@@ -1109,6 +1157,7 @@ public class MainActivity extends Activity implements CvCameraViewListener2 {
 				int isProb = 0;
 								
 				String modelFile = storeFolderName + "/model";
+				//disini seharusnya periksa apakah terdapat file model
 				int[] returnedLabel = {0};
 				double[] returnedProb = {0.0};
 				
@@ -1119,14 +1168,26 @@ public class MainActivity extends Activity implements CvCameraViewListener2 {
 				if (r == 0) {
 					
 					if (mode == TEST_MODE){
-						String tampil="";
+						
 						for (int i = 0; i < letters.length; i++) {
 							if(returnedLabel[0]==i+1){
 								tampil=letters[i];
-							}							
+							}else if(returnedLabel[0] > i+1){
+								tampil="";
+							}
 						}
-						Core.putText(rgbaMat, tampil, new Point(rgbaMat.cols()-50,rgbaMat.rows()-20),
+									
+						Core.putText(rgbaMat, tampil, new Point(10,rgbaMat.rows()-50),
+								Core.FONT_HERSHEY_SIMPLEX, 1, new Scalar(255, 255, 255, 255),2);							
+																
+						frameTest++;
+						if (frameTest > 7) {
+							buffer.append(tampil);							
+							frameTest=0;
+						}
+						Core.putText(rgbaMat, buffer.toString(), new Point(10,rgbaMat.rows()-20),
 								Core.FONT_HERSHEY_SIMPLEX, 1, new Scalar(255, 255, 255, 255),2);
+						
 					}else if (mode == APP_TEST_MODE) { //Launching other apps
 						Core.putText(rgbaMat, Integer.toString(returnedLabel[0]), new Point(rgbaMat.cols()-15,rgbaMat.rows()-15),
 								Core.FONT_HERSHEY_SIMPLEX, 0.6, mColorsRGB[2]);
@@ -1143,7 +1204,7 @@ public class MainActivity extends Activity implements CvCameraViewListener2 {
 							}
 						}						
 					}
-				}
+				}								
 			}
 			
 	
@@ -1466,41 +1527,28 @@ public class MainActivity extends Activity implements CvCameraViewListener2 {
 	}
 	
 	//Generates binary image thresholded only by sampled background colors
-	void produceBinBackImg(Mat imgIn, Mat imgOut)
-	{
-		for (int i = 0; i < SAMPLE_NUM; i++)
-		{
-		
-			
+	void produceBinBackImg(Mat imgIn, Mat imgOut) {
+		for (int i = 0; i < SAMPLE_NUM; i++) {
+					
 			lowerBound.set(new double[]{avgBackColor[i][0]-cBackLower[i][0], avgBackColor[i][1]-cBackLower[i][1],
 					avgBackColor[i][2]-cBackLower[i][2]});
 			upperBound.set(new double[]{avgBackColor[i][0]+cBackUpper[i][0], avgBackColor[i][1]+cBackUpper[i][1],
 					avgBackColor[i][2]+cBackUpper[i][2]});
-			
-			
 			Core.inRange(imgIn, lowerBound, upperBound, sampleMats[i]);
-			
-			
 		}
 		
 		imgOut.release();
 		sampleMats[0].copyTo(imgOut);
 	
-		
-		for (int i = 1; i < SAMPLE_NUM; i++)
-		{
+		for (int i = 1; i < SAMPLE_NUM; i++) {
 			Core.add(imgOut, sampleMats[i], imgOut);
 		}
 		
 		Core.bitwise_not(imgOut, imgOut);
-		
-		
 		Imgproc.medianBlur(imgOut, imgOut, 7);		
-		
 	}
 		
-	void dilate(Mat img)
-	{
+	void dilate(Mat img){
 		int cols = img.cols();
 		int rows = img.rows();
 		
@@ -1512,8 +1560,7 @@ public class MainActivity extends Activity implements CvCameraViewListener2 {
 		
 	}	
 	
-	void makeContours()
-	{
+	void makeContours(){
 		hg.contours.clear();
 		Imgproc.findContours(binMat, hg.contours, hg.hie, Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_NONE);
 		
@@ -1521,6 +1568,8 @@ public class MainActivity extends Activity implements CvCameraViewListener2 {
 		hg.findBiggestContour();
 		
 		if (hg.cMaxId > -1) {
+			hg.features = new ArrayList<Double>();			
+			frameJeda=0;
 			
 			hg.approxContour.fromList(hg.contours.get(hg.cMaxId).toList());
 			Imgproc.approxPolyDP(hg.approxContour, hg.approxContour, 2, true);
@@ -1561,16 +1610,14 @@ public class MainActivity extends Activity implements CvCameraViewListener2 {
 			hg.fingerTipsOrdered.clear();
 			hg.defectIdAfter.clear();
 						
-			if ((contourPts.length >= 5) 
-					&& hg.detectIsHand(rgbaMat) && (cId.length >=5)){
+			if ((contourPts.length >= 5) && hg.detectIsHand(rgbaMat) && (cId.length >=5)){
 				Imgproc.convexityDefects(hg.contours.get(hg.cMaxId), hg.hullI, hg.defects);
 				List<Integer> dList = hg.defects.toList();
 			
 							
 				Point prevPoint = null;
 				
-				for (int i = 0; i < dList.size(); i++)
-				{
+				for (int i = 0; i < dList.size(); i++){
 					int id = i % 4;
 					Point curPoint;
 					
@@ -1614,6 +1661,20 @@ public class MainActivity extends Activity implements CvCameraViewListener2 {
 					}
 				}			
 			}
+		} else {
+			frameJeda++;
+			if (frameJeda > 5) {
+				
+				if(buffer.length() > 0){
+					speech();
+				}
+				
+				buffer.delete(0, buffer.length());
+				tampil="";
+				frameJeda=0;
+				hg.features=null;
+				
+			}
 		}
 		
 		if (hg.detectIsHand(rgbaMat)) {
@@ -1625,20 +1686,17 @@ public class MainActivity extends Activity implements CvCameraViewListener2 {
 		
 	}
 	
-	boolean isClosedToBoundary(Point pt, Mat img)
-	{
+	boolean isClosedToBoundary(Point pt, Mat img){
 		int margin = 5;
 		if ((pt.x > margin) && (pt.y > margin) && 
 				(pt.x < img.cols()-margin) &&
 				(pt.y < img.rows()-margin)) {
 			return false;
-		}
-		
+		}		
 		return true;
 	}
 	
-	Rect makeBoundingBox(Mat img)
-	{
+	Rect makeBoundingBox(Mat img){
 		hg.contours.clear();
 		Imgproc.findContours(img, hg.contours, hg.hie, Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_NONE);
 		hg.findBiggestContour();
@@ -1646,9 +1704,6 @@ public class MainActivity extends Activity implements CvCameraViewListener2 {
 		if (hg.cMaxId > -1) {
 			
 			hg.boundingRect = Imgproc.boundingRect(hg.contours.get(hg.cMaxId));
-			
-			
-			
 		}
 		
 		if (hg.detectIsHand(rgbaMat)) {
@@ -1670,10 +1725,16 @@ public class MainActivity extends Activity implements CvCameraViewListener2 {
 	}
 	
 	@Override
-	public void onResume() {
+	public void onResume() {		
+		super.onResume();		
 		
-		super.onResume();
-		OpenCVLoader.initAsync(OpenCVLoader.OPENCV_VERSION_2_4_3, this, mLoaderCallback);
+		if (!OpenCVLoader.initDebug()) {
+            Log.d(TAG, "Internal OpenCV library not found. Using OpenCV Manager for initialization");
+            OpenCVLoader.initAsync(OpenCVLoader.OPENCV_VERSION_2_4_3, this, mLoaderCallback);
+        } else {
+            Log.d(TAG, "OpenCV library found inside package. Using it!");
+            mLoaderCallback.onManagerConnected(LoaderCallbackInterface.SUCCESS);
+        }
 	
 		Log.i(TAG, "Resumed!");
 	}
@@ -1705,7 +1766,6 @@ public class MainActivity extends Activity implements CvCameraViewListener2 {
 		          oos.writeObject(tmp);
 		        }
 		        
-
 		        Log.e("Ob","write succeeded......");
 		        oos.close();
 		        Log.e("Write","write succeeded......");
@@ -1713,11 +1773,7 @@ public class MainActivity extends Activity implements CvCameraViewListener2 {
 	        {
 	        	Log.e("Write","write failed......");
 	        }
-	     
-	     
-	}
-	
-
+	     }
 	
 	public static boolean deleteDir(File dir) {
 	      if (dir != null && dir.isDirectory()) {
